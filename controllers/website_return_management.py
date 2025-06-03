@@ -35,4 +35,4 @@ class CustomerRegistration(main.Home):
 
     @http.route('/my/request-thank-you', website=True, page=True, auth='public', csrf=False)
     def maintenance_request_thanks(self):
-        return request.render('website_return_management.customers_request_thank_page')
+        return request.render('product_return.customers_request_thank_page')

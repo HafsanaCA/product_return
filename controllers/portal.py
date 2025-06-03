@@ -72,7 +72,7 @@ class ReturnCustomerPortal(CustomerPortal):
             'searchbar_sortings': searchbar_sortings,
             'sortby': sortby,
         })
-        return request.render("website_return_management.portal_my_returns", values)
+        return request.render("product_return.portal_my_returns", values)
 
     @http.route(['/my/return_orders/<int:order_id>'], type='http', auth="public", website=True)
     def portal_my_return_detail(self, order_id=None, access_token=None, report_type=None, download=False, **kw):
@@ -83,11 +83,11 @@ class ReturnCustomerPortal(CustomerPortal):
             return request.redirect('/my')
         if report_type in ('html', 'pdf', 'text'):
             return self._show_report(model=order_sudo, report_type=report_type,
-                                     report_ref='website_return_management.report_sale_returns',
+                                     report_ref='product_return.report_sale_returns',
                                      download=download)
 
         values = self._sale_return_get_page_view_values(order_sudo, access_token, **kw)
-        return request.render("website_return_management.portal_sale_return_page", values)
+        return request.render("product_return.portal_sale_return_page", values)
 
     def _sale_return_get_page_view_values(self, order, access_token, **kwargs):
         """Function for sale return get page view values"""

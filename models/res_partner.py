@@ -29,7 +29,7 @@ class ResPartner(models.Model):
     def action_open_returns(self):
         """This function returns an action that displays the sale return orders
         from partner."""
-        action = self.env['ir.actions.act_window']._for_xml_id('website_return_management.action_sale_return')
+        action = self.env['ir.actions.act_window']._for_xml_id('product_return.action_sale_return')
         domain = []
         if self.is_company:
             domain.append(('partner_id.commercial_partner_id.id', '=', self.id))

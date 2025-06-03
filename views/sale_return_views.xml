@@ -65,7 +65,7 @@
                             <field name="stock_picking"/>
                         </page>
                         <page string="Other" name="other_info">
-                            <separator colspan="4" string="Other Datails"/>
+                            <separator colspan="4" string="Other Details"/>
                             <field name="note" colspan="4" nolabel="1"/>
                         </page>
                     </notebook>
@@ -73,8 +73,8 @@
             </form>
         </field>
     </record>
-<!-- Tree view sale return-->
-    <record id="sale_return_view_tree" model="ir.ui.view">
+<!-- List view sale return-->
+    <record id="sale_return_view_list" model="ir.ui.view">
         <field name="name">sale.return.view.list</field>
         <field name="model">sale.return</field>
         <field name="arch" type="xml">
@@ -121,10 +121,6 @@
         <field name="name">Sale Return</field>
         <field name="res_model">sale.return</field>
         <field name="view_mode">list,form</field>
-        <field name="help" type="html">
-            <p class="oe_view_nocontent_create">Create The First Return
-            </p>
-        </field>
     </record>
 <!--    Menu item for Return orders-->
     <menuitem id="sale_return_menu"

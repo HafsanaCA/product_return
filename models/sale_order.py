@@ -27,7 +27,7 @@ class SaleOrder(models.Model):
     def action_open_returns(self):
         """This function returns an action that displays the sale return orders from sale order"""
         action = self.env['ir.actions.act_window']._for_xml_id(
-            'website_return_management.action_sale_return')
+            'product_return.action_sale_return')
         domain = [('sale_order', '=', self.id)]
         action['domain'] = domain
         action['context'] = {'search_default_order': 1}
