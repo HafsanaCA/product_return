@@ -12,10 +12,12 @@ publicWidget.registry.return_order = publicWidget.Widget.extend({
         console.log("Return Order Widget Initialized");
         return this._super.apply(this, arguments);
     },
+
     _onHiddenBoxBtnClick: function (ev) {
         ev.preventDefault();
-        this.$('#hidden_box').modal('show');
+        $('#hidden_box').modal('show'); // ✅ Use this line
     },
+
     _onProductChange: function (ev) {
         var $product = $(ev.currentTarget);
         var $submitButton = this.$('#submit');

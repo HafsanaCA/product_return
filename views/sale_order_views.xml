@@ -2,81 +2,14 @@
 <odoo>
     <template id="sale_order_portal_return_button" inherit_id="sale.sale_order_portal_content">
         <xpath expr="//section[@id='details']//table[@id='sales_order_table']/thead/tr" position="before">
-            <div class="mt16 mb16" style="background-color: padding: 10px;">
-                <button id="hidden_box_btn" class="btn btn-primary" style="color: white;margin-top: -55%;margin-left:80%;" data-bs-toggle="modal" data-bs-target="#hidden_box">
+            <div class="mt16 mb16" style="padding: 10px;">
+                <a class="btn btn-primary"
+                   style="color: white; margin-top: -60%; margin-left: 80%;"
+                   t-attf-href="/sale_return_form/{{ sale_order.id }}">
                     <i class="fa fa-truck me-2" style="color: white;"/> Return Order
-                </button>
+                </a>
             </div>
         </xpath>
     </template>
-
-    <template id="sale_order_return_modal" name="Sale Order Return Modal">
-        <div id="hidden_box" class="modal fade" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div id="modal_debug_marker" style="color: red; font-weight: bold; padding: 10px;">Modal Template Updated: June 4, 2025, 15:32 IST</div>
-                    <div class="modal-header">
-                        <h2 class="modal-title fw-bold fs-4">Sale Return</h2>
-                        <h1 style="color: blue; font-size: 24px;">Custom Header Test</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"/>
-                    </div>
-
-                    <form action="/sale_return" method="post" class="o_website_form modal-body" data-model_name="sale.return" data-success_page="/my/request-thank-you">
-                        <input type="hidden" name="csrf_token" id="csrf_token_input"/>
-
-                        <div class="row mb-3">
-                            <div class="col-6 fw-bold">Customer Name</div>
-                            <div class="col-6 fw-bold">Sale Order</div>
-                            <div class="col-6 mt-1">
-                                <input type="text" readonly="1" t-att-value="sale_order.partner_id.name" name="partner" class="form-control" style="border: 2px solid #007bff;"/>
-                            </div>
-                            <div class="col-6 mt-1">
-                                <input type="text" readonly="1" t-att-value="sale_order.name" name="order" class="form-control" style="border: 2px solid #007bff;"/>
-                                <input type="hidden" t-att-value="sale_order.id" name="order_id"/>
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-6 fw-bold">Select Product</div>
-                            <div class="col-6 fw-bold">Return Quantity</div>
-                        </div>
-                        <t t-foreach="sale_order.order_line.filtered(lambda l: l.qty_delivered > 0)" t-as="line">
-                            <div class="row mb-2">
-                                <div class="col-6">
-                                    <div class="form-check">
-                                        <input type="checkbox"
-                                               class="form-check-input"
-                                               t-att-name="'product_%d' % line.product_id.id"
-                                               t-att-value="line.product_id.id"
-                                               t-att-id="'product_%d' % line.product_id.id"/>
-                                        <label class="form-check-label ms-1" t-att-for="'product_%d' % line.product_id.id" t-esc="line.product_id.name"/>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <input type="number"
-                                           class="form-control"
-                                           min="0"
-                                           t-att-max="line.qty_delivered"
-                                           placeholder="Return Qty"
-                                           t-att-name="'qty_%d' % line.product_id.id"
-                                           t-att-id="'qty_%d' % line.product_id.id"
-                                           style="border: 2px solid #007bff;"/>
-                                </div>
-                            </div>
-                        </t>
-
-                        <div class="mb-3">
-                            <label class="fw-bold mb-1">Reason for Return</label>
-                            <textarea rows="4" name="reason" class="form-control" placeholder="Please enter the reason..." required="1"
-                                      style="width: 50%; border: 2px solid #28a745;"> </textarea>
-                        </div>
-
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-success" id="submit">Submit Return</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </template>
 </odoo>
+

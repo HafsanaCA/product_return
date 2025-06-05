@@ -12,10 +12,11 @@
             'views/sale_order_views.xml',
             'views/res_partner_views.xml',
             'views/stock_picking_views.xml',
+            'views/form_template_views.xml',
     ],
     'assets': {
         'web.assets_frontend': [
-            'product_return/static/src/js/sale_return.js'
+            # 'product_return/static/src/js/sale_return.js'
         ]
     },
     'installable': True,

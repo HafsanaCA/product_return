@@ -24,6 +24,8 @@ class ReturnOrder(models.Model):
                                       store=True,
                                       string="Product", help='Return Product'
                                       )
+    return_line_ids = fields.One2many('sale.return.line',  'return_id',  string="Return Lines")
+
     sale_order = fields.Many2one('sale.order', string="Sale Order",
                                  required=True, help='Reference of Sale Order')
     partner_id = fields.Many2one('res.partner', string="Customer",
@@ -232,3 +234,21 @@ class ReturnOrder(models.Model):
                 lambda p: p.product_id == self.product_id)
             if moves:
                 self.received_qty = sum(moves.mapped('quantity_done'))
+
+class SaleReturnLine(models.Model):
+    _name = 'sale.return.line'
+    _description = 'Sale Return Line'
+
+    return_id = fields.Many2one(
+        'sale.return',
+        string="Return Order",
+        required=True,
+        ondelete='cascade'
+    )
+    product_id = fields.Many2one(
+        'product.product',
+        string="Product",
+        required=False
+    )
+    quantity = fields.Float(string="Quantity", required=True)
+    reason = fields.Char(string="Reason")  # Optional field
