@@ -2,11 +2,35 @@
 <odoo>
     <template id="customers_request_thank_page" name="Return Confirmation">
         <t t-call="website.layout">
-            <div class="container my-5 text-center">
-                <h2 class="text-success mb-4">Your return request has been submitted successfully!</h2>
+            <div class="container my-5 text-center" style="margin-top: 20%;">
+                <h2 class="mb-4">Your return request has been submitted successfully!</h2>
                 <p>We will process your request and notify you soon.</p>
                 <a href="/my/orders" class="btn btn-primary mt-4">Back to My Orders</a>
             </div>
         </t>
     </template>
 </odoo>
+<!--<notebook>-->
+<!--                        <page string="Reason" name="reason">-->
+<!--                            <field name="reason"/>-->
+<!--                        </page>-->
+<!--                        <page string="Delivery Order" name="delivery_order">-->
+<!--                            <field name="source_pick"/>-->
+<!--                        </page>-->
+<!--                        <page string="Return Picking" name="return_picking">-->
+<!--                            <field name="stock_picking"/>-->
+<!--                        </page>-->
+<!--                        <page string="Return Lines" name="return_lines">-->
+<!--                            <field name="return_line_ids">-->
+<!--                                <tree editable="bottom">-->
+<!--                                    <field name="product_id"/>-->
+<!--                                    <field name="quantity"/>-->
+<!--                                    <field name="reason"/>-->
+<!--                                </tree>-->
+<!--                            </field>-->
+<!--                        </page>-->
+<!--                        <page string="Other" name="other_info">-->
+<!--                            <separator colspan="4" string="Other Details"/>-->
+<!--                            <field name="note" colspan="4" nolabel="1"/>-->
+<!--                        </page>-->
+<!--                    </notebook>-->

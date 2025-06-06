@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_sale_return_internal,access.sale.return.internal,model_sale_return,base.group_user,1,1,1,1
 access_sale_return_portal,access.sale.return.portal,model_sale_return,base.group_portal,1,0,0,0
+access_sale_return_line_user,sale.return.line.user,model_sale_return_line,base.group_user,1,1,1,1

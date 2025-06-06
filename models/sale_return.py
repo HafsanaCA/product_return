@@ -1,30 +1,33 @@
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 
 class ReturnOrder(models.Model):
     """Class for sale order return"""
     _name = 'sale.return'
-    _inherit = ['portal.mixin']
+    _inherit = ['portal.mixin', 'mail.thread',
+                'mail.activity.mixin']  # Ensure mail.thread and mail.activity.mixin are inherited
     _rec_name = "name"
     _order = "name"
     _description = "Return Order"
 
     @api.model
     def _get_default_name(self):
+        """Generates a default name for the return order using an Odoo sequence."""
         return self.env['ir.sequence'].get('sale.return')
 
     active = fields.Boolean('Active', default=True, help='Is active or not')
     name = fields.Char(string="Name", default=_get_default_name,
                        help='Name of return order')
     product_id = fields.Many2one('product.product', string="Product Variant",
-                                 required=True,
-                                 help="defines the product variant that need to be returned")
+                                 required=False,
+                                 help="defines the product variant that need to be returned (less used in multi-line returns)")
     product_tmpl_id = fields.Many2one('product.template',
                                       related="product_id.product_tmpl_id",
                                       store=True,
                                       string="Product", help='Return Product'
                                       )
-    return_line_ids = fields.One2many('sale.return.line',  'return_id',  string="Return Lines")
+    return_line_ids = fields.One2many('sale.return.line', 'return_id', string="Return Lines")
 
     sale_order = fields.Many2one('sale.order', string="Sale Order",
                                  required=True, help='Reference of Sale Order')
@@ -36,9 +39,9 @@ class ReturnOrder(models.Model):
     create_date = fields.Datetime(string="Create Date",
                                   help='Create date of the return')
     quantity = fields.Float(string="Quantity", default=0,
-                            help='Return quantity')
+                            help='Total return quantity (if needed, computed from lines)')
     received_qty = fields.Float(string="Received Quantity",
-                                help='Received item quantity')
+                                help='Total received item quantity (if needed, computed from lines)')
     reason = fields.Text("Reason", help='Reason of the return')
     stock_picking = fields.One2many('stock.picking', 'return_order_pick',
                                     domain="[('return_order','=',False)]",
@@ -68,40 +71,83 @@ class ReturnOrder(models.Model):
                                help='Trigger a decrease of the delivered/received quantity in'
                                     ' the associated Sale Order/Purchase Order')
 
+    # --- Computed Boolean Fields for UI Control ---
+    is_draft = fields.Boolean(compute='_compute_state_booleans', store=True)
+    is_not_draft_or_confirm = fields.Boolean(compute='_compute_state_booleans', store=True)
+    is_confirm_or_done = fields.Boolean(compute='_compute_state_booleans', store=True)
+
+    @api.depends('state')
+    def _compute_state_booleans(self):
+        for rec in self:
+            rec.is_draft = (rec.state == 'draft')
+            rec.is_not_draft_or_confirm = (rec.state not in ('draft', 'confirm'))
+            rec.is_confirm_or_done = (rec.state in ('confirm', 'done'))
+
+    # --- END Computed Fields ---
+
     def return_confirm(self):
-        """Confirm the sale return"""
-        if not self.source_pick:
+        self.ensure_one()
+
+        if not self.return_line_ids:
+            raise UserError("Cannot confirm a return order without any return lines.")
+
+        created_pickings = []
+        for line in self.return_line_ids:
+            if line.quantity <= 0:
+                continue
+
             stock_picks = self.env['stock.picking'].search(
-                [('origin', '=', self.sale_order.name)])
+                [('origin', '=', self.sale_order.name), ('state', '=', 'done')]
+            )
+
             moves = stock_picks.mapped('move_ids_without_package').filtered(
-                lambda p: p.product_id == self.product_id)
-        else:
-            moves = self.source_pick.mapped(
-                'move_ids_without_package').filtered(
-                lambda p: p.product_id == self.product_id)
-        if moves:
-            moves = moves.sorted('product_uom_qty', reverse=True)
-            pick = moves[0].picking_id
-            vals = {'picking_id': pick.id}
+                lambda m: m.product_id == line.product_id and m.state == 'done' and m.product_uom_qty >= line.quantity
+            )
+
+            if not moves:
+                raise UserError(
+                    f"No sufficient delivered quantity found for product '{line.product_id.name}' to return {line.quantity} units. Please verify the quantity or ensure delivery is done.")
+
+            move_to_return = moves[0]
+            pick = move_to_return.picking_id
+
+            vals = {
+                'picking_id': pick.id,
+            }
             return_pick_wizard = self.env['stock.return.picking'].create(vals)
-            return_pick_wizard._compute_moves_locations()
+
             return_pick_wizard.product_return_moves.unlink()
-            lines = {'product_id': self.product_id.id,
-                     "quantity": self.quantity,
-                     'wizard_id': return_pick_wizard.id,
-                     'move_id': moves[0].id, 'to_refund': self.to_refund}
-            self.env['stock.return.picking.line'].create(lines)
-            return_pick = return_pick_wizard._create_returns()
-            if return_pick:
-                return_pick = self.env['stock.picking'].browse(return_pick[0])
-                return_pick.update({'note': self.reason})
-                return_pick.write(
-                    {'return_order': False, 'return_order_pick': self.id,
-                     'return_order_picking': True})
-                self.write({'state': 'confirm'})
+
+            return_picking_line_vals = {
+                'product_id': line.product_id.id,
+                'quantity': line.quantity,
+                'wizard_id': return_pick_wizard.id,
+                'move_id': move_to_return.id,
+                'to_refund': self.to_refund,
+            }
+            self.env['stock.return.picking.line'].create(return_picking_line_vals)
+
+            new_picking_ids = return_pick_wizard._create_return()
+            if new_picking_ids:
+                new_picking = self.env['stock.picking'].browse(new_picking_ids[0])
+
+                # FIX: Combine all updates into a single write call with explicit string conversion for note
+                new_picking.write({
+                    'note': str(self.reason) if self.reason else False,  # Explicitly convert to string or False
+                    'return_order': False,  # This field is on stock.picking to link to original source
+                    'return_order_pick': self.id,  # This field is on stock.picking to link back to THIS return order
+                    # 'return_order_picking': True  # This field is on stock.picking as a flag
+                })
+                created_pickings.append(new_picking.id)
+            else:
+                raise UserError(f"Failed to create return picking for product '{line.product_id.name}'.")
+
+        if created_pickings:
+            self.write({'state': 'confirm'})
+        else:
+            raise UserError("No return pickings were created. Please check return lines and original deliveries.")
 
     def return_cancel(self):
-        """Cancel the return"""
         self.write({'state': 'cancel'})
         if self.stock_picking:
             for rec in self.stock_picking.filtered(
@@ -109,131 +155,87 @@ class ReturnOrder(models.Model):
                 rec.action_cancel()
 
     def _get_report_base_filename(self):
-        """Function for get report base name"""
         self.ensure_one()
         return 'Sale Return - %s' % (self.name)
 
     def _compute_access_url(self):
-        """ Function for compute access url of return order """
         super(ReturnOrder, self)._compute_access_url()
         for order in self:
             order.access_url = '/my/return_orders/%s' % order.id
 
-    @api.depends('stock_picking', 'state')
+    @api.depends('stock_picking', 'state', 'source_pick')
     def _compute_delivery(self):
-        """Function to compute picking and delivery counts"""
         for rec in self:
-            rec.delivery_count = 0
-            rec.picking_count = 0
-            if rec.source_pick:
-                rec.delivery_count = len(rec.source_pick)
-            else:
-                rec.delivery_count = self.env['stock.picking'].search_count(
-                    [('return_order', 'in', self.ids),
-                     ('return_order_picking', '=', False)])
-            if rec.stock_picking:
-                rec.picking_count = len(rec.stock_picking)
-            else:
-                rec.picking_count = self.env['stock.picking'].search_count(
-                    [('return_order_pick', 'in', self.ids),
-                     ('return_order_picking', '=', True)])
+            rec.delivery_count = self.env['stock.picking'].search_count(
+                [('return_order', '=', rec.id), ('return_order_picking', '=', False)]) if not rec.source_pick else len(
+                rec.source_pick)
+            rec.picking_count = self.env['stock.picking'].search_count(
+                [('return_order_pick', '=', rec.id),
+                 ('return_order_picking', '=', True)]) if not rec.stock_picking else len(rec.stock_picking)
 
     def action_view_picking(self):
-        """Function to view the stock picking transfers"""
-        action = self.env["ir.actions.actions"]._for_xml_id(
-            "stock.action_picking_tree_all")
-
-        pickings = self.mapped('stock_picking')
-        if not self.stock_picking:
-            pickings = self.env['stock.picking'].search(
-                [('return_order_pick', '=', self.id),
-                 ('return_order_picking', '=', True)])
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        pickings = self.stock_picking if self.stock_picking else self.env['stock.picking'].search(
+            [('return_order_pick', '=', self.id), ('return_order_picking', '=', True)])
         if len(pickings) > 1:
             action['domain'] = [('id', 'in', pickings.ids)]
         elif pickings:
-            form_view = [(self.env.ref('stock.view_picking_form').id, 'form')]
-            if 'views' in action:
-                action['views'] = form_view + [(state, view) for state, view in
-                                               action['views'] if
-                                               view != 'form']
-            else:
-                action['views'] = form_view
+            action['views'] = [(self.env.ref('stock.view_picking_form').id, 'form')]
             action['res_id'] = pickings.id
-        # Prepare the context.
-        picking_id = pickings.filtered(
-            lambda l: l.picking_type_id.code == 'outgoing')
+        picking_id = pickings.filtered(lambda l: l.picking_type_id.code == 'outgoing')
+        if not picking_id:
+            picking_id = pickings[0] if pickings else None
         if picking_id:
-            picking_id = picking_id[0]
-        else:
-            picking_id = pickings[0]
-        action['context'] = dict(self._context,
-                                 default_partner_id=self.partner_id.id,
-                                 default_picking_type_id=picking_id.picking_type_id.id)
+            action['context'] = dict(self._context,
+                                     default_partner_id=self.partner_id.id,
+                                     default_picking_type_id=picking_id.picking_type_id.id)
         return action
 
     def action_view_delivery(self):
-        """Function to view the delivery transfers"""
-        action = self.env["ir.actions.actions"]._for_xml_id(
-            "stock.action_picking_tree_all")
-
-        pickings = self.mapped('stock_picking')
-        if not self.stock_picking:
-            pickings = self.env['stock.picking'].search(
-                [('return_order', '=', self.id),
-                 ('return_order_picking', '=', False)])
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id("stock.action_picking_tree_all")
+        pickings = self.source_pick if self.source_pick else self.env['stock.picking'].search(
+            [('return_order', '=', self.id), ('return_order_picking', '=', False)])
         if len(pickings) > 1:
             action['domain'] = [('id', 'in', pickings.ids)]
         elif pickings:
-            form_view = [(self.env.ref('stock.view_picking_form').id, 'form')]
-            if 'views' in action:
-                action['views'] = form_view + [(state, view) for state, view in
-                                               action['views'] if
-                                               view != 'form']
-            else:
-                action['views'] = form_view
+            action['views'] = [(self.env.ref('stock.view_picking_form').id, 'form')]
             action['res_id'] = pickings.id
-        # Prepare the context.
-        picking_id = pickings.filtered(
-            lambda l: l.picking_type_id.code == 'outgoing')
+        picking_id = pickings.filtered(lambda l: l.picking_type_id.code == 'outgoing')
+        if not picking_id:
+            picking_id = pickings[0] if pickings else None
         if picking_id:
-            picking_id = picking_id[0]
-        else:
-            picking_id = pickings[0]
-        action['context'] = dict(self._context,
-                                 default_partner_id=self.partner_id.id,
-                                 default_picking_type_id=picking_id.picking_type_id.id)
+            action['context'] = dict(self._context,
+                                     default_partner_id=self.partner_id.id,
+                                     default_picking_type_id=picking_id.picking_type_id.id)
         return action
 
     @api.onchange('sale_order', 'source_pick')
     def onchange_sale_order(self):
-        """All the fields are updated according to the sale order"""
         delivery = None
+        product_ids = []
         if self.sale_order:
             self.partner_id = self.sale_order.partner_id
-
             delivery = self.env['stock.picking'].search(
                 [('origin', '=', self.sale_order.name)])
+            product_ids = self.sale_order.order_line.mapped('product_id').ids
         if self.source_pick:
             delivery = self.source_pick
-        if delivery:
-            product_ids = delivery.move_ids_without_package.mapped(
-                'product_id').ids
-            delivery = delivery.ids
-        else:
-            product_ids = self.sale_order.order_line.mapped('product_id').ids
-
-        return {'domain': {'source_pick': [('id', 'in', delivery)],
+            product_ids = delivery.move_ids_without_package.mapped('product_id').ids
+        delivery_ids = delivery.ids if delivery else []
+        return {'domain': {'source_pick': [('id', 'in', delivery_ids)],
                            'product_id': [('id', 'in', product_ids)]}}
 
     @api.onchange('product_id')
     def onchange_product_id(self):
-        """ Function for calculate done quantity"""
         if self.product_id and self.source_pick:
             moves = self.source_pick.mapped(
                 'move_ids_without_package').filtered(
                 lambda p: p.product_id == self.product_id)
             if moves:
                 self.received_qty = sum(moves.mapped('quantity_done'))
+
 
 class SaleReturnLine(models.Model):
     _name = 'sale.return.line'
@@ -248,7 +250,7 @@ class SaleReturnLine(models.Model):
     product_id = fields.Many2one(
         'product.product',
         string="Product",
-        required=False
+        required=True  # Make product_id required on return lines
     )
     quantity = fields.Float(string="Quantity", required=True)
-    reason = fields.Char(string="Reason")  # Optional field
+    reason = fields.Char(string="Reason")

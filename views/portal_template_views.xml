@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="portal_my_returns" name="My Returns">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Return Orders</t>
+            </t>
+
+            <section class="portal_content">
+                <div t-if="not orders" class="alert alert-info">
+                    There are no return orders.
+                </div>
+                <div t-if="orders" class="table-responsive">
+                    <table class="table table-hover o_portal_my_table">
+                        <thead>
+                            <tr class="active">
+                                <th class="text-start">Name</th>
+                                <th class="text-start">Sale Order</th>
+                                <th class="text-start">Status</th>
+                                <th class="text-start">Creation Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="orders" t-as="order">
+                                <tr>
+                                    <!-- Link to the detailed return order page -->
+                                    <td><a t-att-href="order.access_url"><t t-esc="order.name"/></a></td>
+                                    <td><t t-esc="order.sale_order.name"/></td>
+                                    <td><span t-esc="order.state" class="badge bg-primary text-capitalize"/></td>
+                                    <td><t t-esc="order.create_date" t-options='{"widget": "datetime"}'/></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="o_portal_pager">
+                    <t t-call="portal.pager"/>
+                </div>
+            </section>
+        </t>
+    </template>
+
+    <template id="portal_sale_return_page" name="Return Order Details">
+        <t t-call="portal.portal_layout">
+            <t t-set="wrap_class" t-value="'o_portal_wrapper_page'"/>
+            <t t-set="portal_show_messages" t-value="False"/>
+
+            <div id="wrap" class="container o_portal_sale_return_page py-4">
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h3 class="mb-0">
+                                Return Order: <span class="fw-bold" t-field="orders.name"/>
+                            </h3>
+                            <span class="badge bg-primary text-capitalize px-3 py-2 fs-5" t-field="orders.state"/>
+                        </div>
+                        <hr/>
+                    </div>
+                </div>
+
+
+                <div class="row">
+                    <div class="col-md-7 col-lg-8">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <strong>Customer:</strong>
+                                <span class="ms-2" t-field="orders.partner_id.name"/>
+                            </div>
+                            <div class="col-sm-6">
+                                <strong>Sale Order:</strong>
+                                <span class="ms-2" t-field="orders.sale_order.name"/>
+                            </div>
+                            <div class="col-sm-12">
+                                <strong>Reason:</strong>
+                                <span class="ms-2" t-field="orders.reason"/>
+                            </div>
+                            <div class="col-sm-12">
+                                <strong>Created On:</strong>
+                                <span class="ms-2" t-field="orders.create_date" t-options='{"widget": "datetime"}'/>
+                            </div>
+                        </div>
+
+                        <h4 class="mt-5">Products to be Returned</h4>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-end">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="orders.return_line_ids" t-as="line">
+                                        <tr>
+                                            <td><span t-field="line.product_id.name"/></td>
+                                            <td class="text-end"><span t-field="line.quantity"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

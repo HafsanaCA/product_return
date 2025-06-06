@@ -4,9 +4,9 @@
         <xpath expr="//section[@id='details']//table[@id='sales_order_table']/thead/tr" position="before">
             <div class="mt16 mb16" style="padding: 10px;">
                 <a class="btn btn-primary"
-                   style="color: white; margin-top: -60%; margin-left: 80%;"
+                   style="color: white; margin-top: -90%; margin-left: 87%;"
                    t-attf-href="/sale_return_form/{{ sale_order.id }}">
-                    <i class="fa fa-truck me-2" style="color: white;"/> Return Order
+                    <i class="fa fa-truck me-2" style="color: white;"/> Return
                 </a>
             </div>
         </xpath>
