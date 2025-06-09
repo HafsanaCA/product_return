@@ -4,21 +4,14 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
     _description = "Stock Picking Inheritance for Product Return"
 
-    # Field to link a source delivery picking to a return order
-    # Used by sale.return's 'source_pick' One2many
     return_order = fields.Many2one(
         'sale.return',
         string="Source Return Order",
         help="Links this picking to the original return order for source delivery.")
-
-    # Field to link a return picking (created by the wizard) to a return order
-    # Used by sale.return's 'stock_picking' One2many
     return_order_pick = fields.Many2one(
         'sale.return',
         string="Return Order (Generated)",
         help="Links this generated return picking back to the original return order.")
-
-    # Flag to distinguish between source pickings and generated return pickings
     return_order_picking = fields.Boolean(
         string="Is Return Picking",
         default=False,

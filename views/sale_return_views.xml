@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Explicit List View for Stock Pickings related to Return Orders -->
     <record id="view_stock_picking_return_list" model="ir.ui.view">
         <field name="name">stock.picking.return.list</field>
         <field name="model">stock.picking</field>
@@ -14,8 +13,6 @@
             </list>
         </field>
     </record>
-
-    <!-- Your existing stock.picking form view inheritance -->
     <record id="view_picking_form" model="ir.ui.view">
         <field name="name">sale.picking.view.form</field>
         <field name="model">stock.picking</field>
@@ -40,9 +37,9 @@
                             class="oe_highlight" type="object" invisible="not is_draft"/>
                     <button name="return_cancel" string="Cancel" type="object"
                             confirm="Are you sure you want to cancel this return order?"
-                            invisible="is_not_draft_or_confirm"/>
+                            invisible="is_draft"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirm,done"/>
+                           statusbar_visible="draft,done,cancel"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -52,12 +49,12 @@
                             <field name="picking_count" widget="statinfo"
                                    string="Return Picking"/>
                         </button>
-                        <button name="action_view_delivery" type="object"
-                                class="oe_stat_button" icon="fa-truck"
-                                invisible="delivery_count == 0">
-                            <field name="delivery_count" widget="statinfo"
-                                   string="Delivery Order"/>
-                        </button>
+<!--                        <button name="action_view_delivery" type="object"-->
+<!--                                class="oe_stat_button" icon="fa-truck"-->
+<!--                                invisible="delivery_count == 0">-->
+<!--                            <field name="delivery_count" widget="statinfo"-->
+<!--                                   string="Delivery Order"/>-->
+<!--                        </button>-->
                     </div>
                     <div class="oe_title">
                         <h1>
@@ -67,10 +64,10 @@
 
                     <group>
                         <group>
-                            <field name="sale_order" required="1" readonly="is_confirm_or_done"/>
+                            <field name="sale_order" required="1" readonly="is_done"/>
                             <field name="partner_id" readonly="1"/>
                             <field name="create_date" readonly="1"/>
-                            <field name="user_id" readonly="is_confirm_or_done"/>
+                            <field name="user_id" readonly="is_done"/>
                         </group>
                         <group>
 <!--                            <field name="to_refund" readonly="is_confirm_or_done"/>-->
@@ -79,7 +76,7 @@
                     </group>
                     <notebook>
                         <page string="Return Lines" name="return_lines">
-                            <field name="return_line_ids" readonly="is_confirm_or_done">
+                            <field name="return_line_ids" readonly="is_done">
                                 <list editable="bottom">
                                     <field name="product_id" required="1"/>
                                     <field name="quantity" required="1"/>
@@ -88,36 +85,28 @@
                         </page>
                         <page string="Reason" name="reason_notes">
                             <group>
-                                <field name="reason" readonly="is_confirm_or_done"/>
+                                <field name="reason" readonly="is_done"/>
 <!--                                <field name="note" readonly="is_confirm_or_done"/>-->
                             </group>
                         </page>
-                        <page string="Delivery Order" name="delivery_order">
-                            <field name="source_pick" widget="many2many_tags"
-                                   domain="[('origin', '=', sale_order.name)]"
-                                   help="Select specific delivery orders related to the sale order for this return."
-                                   readonly="is_confirm_or_done"/>
-                        </page>
-<!--                        <page string="Return Picking" name="return_picking">-->
-<!--                            &lt;!&ndash; REFERENCING THE EXPLICIT LIST VIEW FOR STOCK PICKINGS &ndash;&gt;-->
-<!--                            <field name="stock_picking" mode="list" readonly="1"-->
-<!--                                   options="{'no_create': True, 'no_open': True}">-->
-<!--                                <list ref="product_return.view_stock_picking_return_list"/>-->
-<!--                            </field>-->
+<!--                        <page string="Delivery Order" name="delivery_order">-->
+<!--                            <field name="source_pick" widget="many2many_tags"-->
+<!--                                   domain="[('origin', '=', sale_order.name)]"-->
+<!--                                   help="Select specific delivery orders related to the sale order for this return."-->
+<!--                                   readonly="is_confirm_or_done"/>-->
 <!--                        </page>-->
+                        <page string="Return Picking" name="return_picking">
+                            <field name="stock_picking" mode="list" readonly="1"
+                                   options="{'no_create': True, 'no_open': True}">
+                                <list ref="product_return.view_stock_picking_return_list"/>
+                            </field>
+                        </page>
                     </notebook>
-
                 </sheet>
-<!--                <div class="oe_chatter">-->
-<!--                    <field name="message_follower_ids" widget="mail_followers"/>-->
-<!--                    <field name="activity_ids" widget="mail_activity"/>-->
-<!--                    <field name="message_ids" widget="mail_thread"/>-->
-<!--                </div>-->
             </form>
         </field>
     </record>
 
-    <!-- Main List view for sale.return -->
     <record id="sale_return_view_list" model="ir.ui.view">
         <field name="name">sale.return.view.list</field>
         <field name="model">sale.return</field>
@@ -158,8 +147,6 @@
             </search>
         </field>
     </record>
-
-    <!-- Action for sale return -->
     <record id="action_sale_return" model="ir.actions.act_window">
         <field name="name">Sale Return</field>
         <field name="res_model">sale.return</field>
@@ -167,7 +154,6 @@
         <field name="view_id" ref="sale_return_view_list"/>
     </record>
 
-    <!-- Menu item for Return orders -->
     <menuitem id="sale_return_menu"
               parent="sale.sale_menu_root"
               name="Return Orders"

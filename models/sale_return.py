@@ -6,7 +6,7 @@ class ReturnOrder(models.Model):
     """Class for sale order return"""
     _name = 'sale.return'
     _inherit = ['portal.mixin', 'mail.thread',
-                'mail.activity.mixin']  # Ensure mail.thread and mail.activity.mixin are inherited
+                'mail.activity.mixin']
     _rec_name = "name"
     _order = "name"
     _description = "Return Order"
@@ -58,8 +58,7 @@ class ReturnOrder(models.Model):
                                     store=True,
                                     help='Delivery count of the return')
     state = fields.Selection(
-        [('draft', 'Draft'), ('confirm', 'Confirm'), ('done', 'Done'),
-         ('cancel', 'Canceled')],
+        [('draft', 'Draft'), ('done', 'Done'), ('cancel', 'Canceled')],
         string='Status', readonly=True, default='draft',
         help='Status of return order')
     source_pick = fields.One2many('stock.picking', 'return_order',
@@ -71,19 +70,16 @@ class ReturnOrder(models.Model):
                                help='Trigger a decrease of the delivered/received quantity in'
                                     ' the associated Sale Order/Purchase Order')
 
-    # --- Computed Boolean Fields for UI Control ---
     is_draft = fields.Boolean(compute='_compute_state_booleans', store=True)
-    is_not_draft_or_confirm = fields.Boolean(compute='_compute_state_booleans', store=True)
-    is_confirm_or_done = fields.Boolean(compute='_compute_state_booleans', store=True)
+    is_not_draft = fields.Boolean(compute='_compute_state_booleans', store=True)
+    is_done = fields.Boolean(compute='_compute_state_booleans', store=True)
 
     @api.depends('state')
     def _compute_state_booleans(self):
         for rec in self:
             rec.is_draft = (rec.state == 'draft')
-            rec.is_not_draft_or_confirm = (rec.state not in ('draft', 'confirm'))
-            rec.is_confirm_or_done = (rec.state in ('confirm', 'done'))
-
-    # --- END Computed Fields ---
+            rec.is_not_draft = (rec.state != 'draft')
+            rec.is_done = (rec.state == 'done')
 
     def return_confirm(self):
         self.ensure_one()
@@ -129,21 +125,24 @@ class ReturnOrder(models.Model):
 
             new_picking_ids = return_pick_wizard._create_return()
             if new_picking_ids:
-                new_picking = self.env['stock.picking'].browse(new_picking_ids[0])
+                new_picking = new_picking_ids[0]
 
-                # FIX: Combine all updates into a single write call with explicit string conversion for note
+                customer_location = self.partner_id.property_stock_customer
+
                 new_picking.write({
-                    'note': str(self.reason) if self.reason else False,  # Explicitly convert to string or False
-                    'return_order': False,  # This field is on stock.picking to link to original source
-                    'return_order_pick': self.id,  # This field is on stock.picking to link back to THIS return order
-                    # 'return_order_picking': True  # This field is on stock.picking as a flag
+                    'note': str(self.reason) if self.reason else False,
+                    'return_order': False,
+                    'return_order_pick': self.id,
+                    'return_order_picking': True,
+                    'location_id': customer_location.id if customer_location else False,
                 })
+
                 created_pickings.append(new_picking.id)
             else:
                 raise UserError(f"Failed to create return picking for product '{line.product_id.name}'.")
 
         if created_pickings:
-            self.write({'state': 'confirm'})
+            self.write({'state': 'done'})
         else:
             raise UserError("No return pickings were created. Please check return lines and original deliveries.")
 
@@ -250,7 +249,7 @@ class SaleReturnLine(models.Model):
     product_id = fields.Many2one(
         'product.product',
         string="Product",
-        required=True  # Make product_id required on return lines
+        required=True
     )
     quantity = fields.Float(string="Quantity", required=True)
     reason = fields.Char(string="Reason")

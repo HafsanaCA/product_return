@@ -20,31 +20,34 @@
                 <form action="/sale_return" method="post" id="return_form">
                     <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
                     <input type="hidden" name="order_id" t-att-value="sale_order.id"/>
-                    <t t-foreach="sale_order.order_line.filtered(lambda l: l.qty_delivered > 0)" t-as="line">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input"
-                                           t-att-name="'product_%d' % line.product_id.id"
-                                           t-att-id="'product_%d' % line.product_id.id"
-                                           t-att-value="line.product_id.id"
+                    <t t-foreach="sale_order.order_line" t-as="line">
+                        <t t-if="line.qty_delivered &gt; 0">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input"
+                                               t-att-name="'product_%d' % line.product_id.id"
+                                               t-att-id="'product_%d' % line.product_id.id"
+                                               t-att-value="line.product_id.id"
+                                               style="border: 1px solid #dee2e6;"/>
+                                        <label class="form-check-label"
+                                               t-att-for="'product_%d' % line.product_id.id"
+                                               t-esc="line.product_id.name"/>
+                                    </div>
+                                </div>
+                                <br/>
+                                <br/>
+                                <div>
+                                    <input type="number" class="form-control"
+                                           t-att-name="'qty_%d' % line.product_id.id"
+                                           t-att-max="line.qty_delivered"
+                                           min="0" placeholder="Return Quantity"
                                            style="border: 1px solid #dee2e6;"/>
-                                    <label class="form-check-label"
-                                           t-att-for="'product_%d' % line.product_id.id"
-                                           t-esc="line.product_id.name"/>
                                 </div>
                             </div>
-                            <br/>
-                            <br/>
-                            <div>
-                                <input type="number" class="form-control"
-                                       t-att-name="'qty_%d' % line.product_id.id"
-                                       t-att-max="line.qty_delivered"
-                                       min="0" placeholder="Return Quantity"
-                                       style="border: 1px solid #dee2e6;"/>
-                            </div>
-                        </div>
+                        </t>
                     </t>
+
                     <div class="form-group mb-4">
                         <label class="fw-bold" style="margin-bottom:5px;">Reason for Return</label>
                         <textarea name="reason" class="form-control" style="border: 1px solid #dee2e6;"></textarea>
